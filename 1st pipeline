@@ -1,0 +1,102 @@
+# Install dependencies (only requests needed for live STRING API)
+!pip install -q requests
+
+import requests
+import random
+
+# Simulated structure and validation tools
+def run_structure_prediction(protein_id):
+    print(f"Predicting structure for {protein_id}...")
+    return f"{protein_id}_model.pdb"  # Placeholder output
+
+def run_prosa(pdb_path):
+    # Mock Z-score result
+    return round(random.uniform(-8.0, -2.0), 2)
+
+# STRING API function (real)
+def run_string_api(protein_id, species_id=9606, required_score=700):
+    base_url = "https://string-db.org/api"
+    output_format = "json"
+    method = "interaction_partners"
+    request_url = f"{base_url}/{output_format}/{method}?identifiers={protein_id}&species={species_id}&required_score={required_score}"
+    try:
+        response = requests.get(request_url)
+        if response.status_code == 200:
+            data = response.json()
+            interactions = []
+            for entry in data:
+                interactions.append({
+                    "partner": entry["stringId_B"],
+                    "score": entry["score"]
+                })
+            return interactions
+        else:
+            print(f"STRING API failed for {protein_id}: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Error connecting to STRING for {protein_id}: {e}")
+        return None
+
+# Placeholder functions for domain annotation
+def run_blastp(protein_id):
+    return [f"Functionally similar protein to {protein_id}", "ATP-binding", "Hydrolase"]
+
+def run_tmhmm(protein_id):
+    return random.choice(["0 TM domains", "1 TM domain", "2 TM domains"])
+
+def run_wolfpsort(protein_id):
+    return random.choice(["Nuclear", "Cytoplasmic", "Extracellular", "Mitochondrial"])
+
+def run_castp(protein_id):
+    return f"Active site pocket found on {protein_id} model"
+
+def run_glycoep(protein_id):
+    return ["N-linked at N45", "O-linked at T89"]
+
+# === RUN PIPELINE ===
+def annotate_protein(protein_id):
+    print(f"\n==== Analyzing {protein_id} ====")
+
+    # Step 1: Structure prediction
+    pdb_file = run_structure_prediction(protein_id)
+
+    # Step 2: Structural validation
+    z_score = run_prosa(pdb_file)
+    print(f"Z-score: {z_score}")
+
+    # Step 3: Functional annotation
+    blastp_result = run_blastp(protein_id)
+    tmhmm_result = run_tmhmm(protein_id)
+    localization = run_wolfpsort(protein_id)
+    castp_result = run_castp(protein_id)
+    glycosylation = run_glycoep(protein_id)
+
+    # Step 4: STRING PPI
+    string_ppi = run_string_api(protein_id)
+    print(f"STRING interactions: {string_ppi[:3] if string_ppi else 'None'}")
+
+    # Final annotation summary
+    annotation = {
+        "Protein ID": protein_id,
+        "Structure File": pdb_file,
+        "Z-score": z_score,
+        "BLASTp prediction": blastp_result,
+        "TMHMM": tmhmm_result,
+        "Localization": localization,
+        "Active Site": castp_result,
+        "Glycosylation Sites": glycosylation,
+        "Top STRING PPIs": string_ppi[:3] if string_ppi else "None"
+    }
+
+    print("\nAnnotation Summary:")
+    for k, v in annotation.items():
+        print(f"{k}: {v}")
+    return annotation
+
+# === Example Run for One or More Proteins ===
+protein_list = ["Q9Y5S2", "Q96EY1"]  # Replace with your hypothetical protein IDs
+results = []
+
+for protein in protein_list:
+    annotation = annotate_protein(protein)
+    results.append(annotation)
