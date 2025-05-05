@@ -1,0 +1,104 @@
+import os
+import json
+from Bio import SeqIO
+from utils import run_blast, run_foldseek, run_structure_prediction
+from validation import validate structure, run_prosa, run_errat, run_verify3d, run_galaxy_refine
+from annotations import (
+    runrun_aggre_scan3d, run_protein_sol, run_tmhmm, run_wolfpsort,
+    run_castp, run_iupred2a, run_aa_prop, run_cdd, run_hhpred,
+    run_glycoep, run_david_enrichment, run_string_api
+)
+
+# File input setup
+FASTA_FOLDER = "input_fasta_file/"
+STRUCTURES_FOLDER = "input_pdb_file/"
+RESULTS_FOLDER = "results_file/"
+
+# Parsing and Iteration of files
+for fasta_file in os.listdir(FASTA_FOLDER):
+    protein_ID = fasta_file.split('.')[0]
+    sequence_path = os.path.join(FASTA_FOLDER, fasta_file)
+
+    print(f"\n== Processing: {protein_ID} ===")
+
+# Step 1 : Homology Search
+blast_hits = run_blastp(sequence_path)
+foldseek_hits = run_foldseek(sequence_path)
+
+# Step 2 : 3D Structure Prediction
+pdb_file = run_structure_prediction(sequence_path, model="AlphaFold", output_dir=STRUCTURE_FOLDER)
+pdb_file = run_structure_prediction(sequence_path, model="RobettaFold", output_dir=STRUCTURE_FOLDER)
+pdb_file = run_structure_prediction(sequence_path, model="Chai-1", output_dir=STRUCTURE_FOLDER)
+pdb_file = run_structure_prediction(sequence_path, model="ESMFold", output_dir=STRUCTURE_FOLDER)
+
+# Step 3 : Structure Validation
+validation = {
+    "prosa_z_score": run_prosa(pdb_file),
+    "errat_score": run_errat(pdb_file),
+    "verify3d_score": run_verify3d(pdb_file)
+}
+
+# Step 4 : Structure Refinement
+refined_structure = run_galaxy_refine(pdb_file)
+
+# Step 5 : Aggregation propensity of proteins and their solubility prediction
+aggregation = run_aggre_scan3d(refined_structure)
+solubility = run_protein_sol(sequence_path)
+
+# Step 6 : Amino Acid profiling - hydrophilicity, ploarity, GRAVY, etc.
+aa_properties = run_aa_prop(sequence_path)
+
+# Step 7 : Subcellular Localization prediction
+localization = run_wolfpsort(sequence_path)
+
+# Step 8 : Transmembrane Domain Prediction
+tm_helices = run_tmhmm(sequence_path)
+
+# Step 9 : Functional Domain and Secondary Structure Prediction
+cdd_domains = run_cdd(sequence_path)
+hhpred_hits = run_hhpred (sequence_path)
+
+# Step 10 : IDP Prediction
+disorder_scores = run_iupred2a(sequence_path)
+
+# Step 11 : Active Site andd Binding Pocket Detection
+castp_sites = run_castp(refined_structure)
+
+# Step 12 : PTM Prediction 
+glycosylation_sites = run_glycoep(sequence_path)
+
+# Step 13 : Functional Analysis
+david_results = run_david_enrichment(blast_hits)OR(gene_symbols)
+
+# Step 14 : PPI Prediction 
+string_network = run_string_api(protein_ID)
+
+# Step 15 : Compile and Save Results
+annotations = {
+    "protein_ID" : protein_ID,
+    "blastp_hits" : blast_hits,
+    "foldseek_hits" : foldseek_hits,
+    "structure_file" : pdb_file,
+    "validation" : validation,
+    "aggregation": aggregation,
+    "solubility" : solubility,
+    "aa_properties" : aa_properties,
+    "localization" : localization,
+    "tm_helices" : tm_helices,
+    "cdd_domains" : cdd_domains,
+    "hhpred_hits" : hhpred_hits,
+    "idp_scores" : disorder_scores,
+    "active_sites" : castp_sites,
+    "glycosylation_sites" : glycosylation_sites,
+    "david_enrichment_analysis" : david_results,
+    "ppi_network" : string_network,
+}
+
+# Save as JSON
+os.makedirs(RESULTS_FOLDER, exist_ok=True)
+with open(os.path.join(RESULTS_FOLDER, f"{protein_ID}_annotation.json"), "w") as outfile:
+    jason.dump(annotations, outfile, indent=4)
+
+print("\n=== Annotation complete for all proteins ===")
+
+
